@@ -1,5 +1,6 @@
 package io.polygon.kotlin.sdk.sample;
 
+import io.polygon.kotlin.sdk.DefaultJvmHttpClientProvider;
 import io.polygon.kotlin.sdk.rest.ComparisonQueryFilterParameters;
 import io.polygon.kotlin.sdk.rest.ComparisonQueryFilterParametersBuilder;
 import io.polygon.kotlin.sdk.rest.*;
@@ -7,6 +8,7 @@ import io.polygon.kotlin.sdk.rest.experimental.FinancialsParameters;
 import io.polygon.kotlin.sdk.rest.experimental.FinancialsParametersBuilder;
 import io.polygon.kotlin.sdk.rest.reference.*;
 import io.polygon.kotlin.sdk.websocket.*;
+import kotlinx.coroutines.channels.Channel;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
@@ -71,7 +73,8 @@ public class JavaUsageSample {
     public static void websocketSample(String polygonKey) {
         PolygonWebSocketClient client = new PolygonWebSocketClient(
                 polygonKey,
-                PolygonWebSocketCluster.Crypto,
+                Feed.RealTime.INSTANCE,
+                Market.Crypto.INSTANCE,
                 new DefaultPolygonWebSocketListener() {
                     @Override
                     public void onReceive(@NotNull PolygonWebSocketClient client, @NotNull PolygonWebSocketMessage message) {
@@ -98,6 +101,44 @@ public class JavaUsageSample {
 
         try {
             Thread.sleep(4000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        client.unsubscribeBlocking(subs);
+        client.disconnectBlocking();
+    }
+
+    public static void websocketLaunchpadSample(String polygonKey) {
+        PolygonWebSocketClient client = new PolygonWebSocketClient(
+                polygonKey,
+                Feed.RealTime.INSTANCE,
+                Market.LaunchpadStocks.INSTANCE,
+                new DefaultPolygonWebSocketListener() {
+                    @Override
+                    public void onReceive(@NotNull PolygonWebSocketClient client, @NotNull PolygonWebSocketMessage message) {
+                        if (message instanceof PolygonWebSocketMessage.LaunchpadMessage) {
+                            System.out.println("Launchpad " + message);
+                        } else {
+                            System.out.println(message.toString());
+                        }
+                    }
+
+                    @Override
+                    public void onError(@NotNull PolygonWebSocketClient client, @NotNull Throwable error) {
+                        System.out.println("Error in websocket");
+                        error.printStackTrace();
+                    }
+                });
+
+        client.connectBlocking();
+
+        List<PolygonWebSocketSubscription> subs = Collections.singletonList(
+                new PolygonWebSocketSubscription(PolygonWebSocketChannel.LaunchpadStocks.AggPerMinute.INSTANCE, "TSLA"));
+        client.subscribeBlocking(subs);
+
+        try {
+            Thread.sleep(60000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
